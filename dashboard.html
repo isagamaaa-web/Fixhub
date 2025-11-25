@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FixHub Solutions Dashboard</title>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #525151;
+      color: #ffffff;
+      line-height: 1.3;
+    }
+
+    header {
+      background: #0a0a23;
+      color: white;
+      padding: 60px 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    #logout {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #ff4444;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    section {
+      padding: 40px 20px;
+      max-width: 950px;
+      margin: auto;
+    }
+
+    footer {
+      background: #222;
+      color: #aaa;
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* Admin panel */
+    .admin-panel {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 30px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .admin-panel.visible {
+      display: block;
+      animation: fadeIn 0.6s ease;
+    }
+
+    .user-list {
+      margin-top: 20px;
+    }
+
+    .user-item {
+      background: #f2f2f2;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      flex-wrap: wrap;
+      transition: all 0.3s ease;
+    }
+
+    .delete-btn {
+      background: #ff4444;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    .block-btn {
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+
+    .user-info {
+      flex-grow: 1;
+      margin-right: 15px;
+    }
+
+    .user-info strong {
+      color: #007bff;
+    }
+
+    .counter {
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    .search-container {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .search-container input {
+      flex-grow: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* User data form */
+    .user-data {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    .save-btn {
+      background: #007bff;
+      border: none;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .save-btn:disabled {
+      background: gray;
+      cursor: not-allowed;
+    }
+
+    .saved-message {
+      background: #d4edda;
+      color: #155724;
+      padding: 10px;
+      border-radius: 5px;
+      display: none;
+      margin-top: 10px;
+    }
+
+    #mine{
+      color: #63ff44;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>FixHub — Troubleshooting Library</h1>
+    <p>official SVGs where available. Click an item to view 10+ troubleshooting tips.</p>
+    <p id="mine">Powered by AI</p>
+    <button id="logout">Logout</button>
+  </header>
+
+  <section>
+    <h2 id="welcome"></h2>
+    <p id="info"></p>
+
+    <!-- User Personal Data Section -->
+    <div id="user-data" class="user-data">
+      <h3>📝 Your Info</h3>
+
+      <input required type="text" id="username" placeholder="Enter your name">
+      <textarea required id="notes" rows="4" placeholder="Write something..."></textarea>
+
+     <a href="Fixhub.html"><button class="save-btn" id="save-data" disabled>Continue</button></a>
+
+      <div class="saved-message" id="saved-message">
+       
+        ✅ Saved successfully!
+      </div>
+    </div>
+
+    <!-- Admin Section -->
+    <div id="admin-panel" class="admin-panel">
+      <h3>👑 Admin Control Panel</h3>
+
+      <div class="search-container">
+        <span class="counter">Total Users: <span id="user-count">0</span></span>
+        <input type="text" id="search" placeholder="Search user by email...">
+      </div>
+
+      <h4 style="margin-top:20px;">Blocked Users:</h4>
+      <ul id="blocked-list"></ul>
+
+      <div class="user-list" id="user-list"></div>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2025 FixHub Solutions. All rights reserved.<br>Creator: Yeron Esayas</p>
+  </footer>
+
+<script>
+
+  const user = JSON.parse(localStorage.getItem("loggedInUser"));
+  if (!user) {
+    alert("Please log in first!");
+    window.location.href = "index.html";
+  }
+
+  let blockedUsers = JSON.parse(localStorage.getItem("blockedUsers")) || [];
+
+  const welcome = document.getElementById("welcome");
+  const info = document.getElementById("info");
+  const adminPanel = document.getElementById("admin-panel");
+  const userList = document.getElementById("user-list");
+  const userCount = document.getElementById("user-count");
+  const searchInput = document.getElementById("search");
+  const blockedList = document.getElementById("blocked-list");
+
+  const usernameField = document.getElementById("username");
+  const notesField = document.getElementById("notes");
+  const saveBtn = document.getElementById("save-data");
+  const savedMsg = document.getElementById("saved-message");
+
+  // Enable continue button only when fields are filled
+  function checkFields() {
+    saveBtn.disabled = !(usernameField.value.trim() !== "" && notesField.value.trim() !== "");
+  }
+
+  usernameField.addEventListener("input", checkFields);
+  notesField.addEventListener("input", checkFields);
+
+  // Admin panel logic
+  if (user.admin) {
+    welcome.textContent = "Welcome, Admin Yeron 👑";
+    info.textContent = "You have full access to all AdTech Systems.";
+    adminPanel.classList.add("visible");
+
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+    renderUserList(users);
+    renderBlockedList();
+
+    searchInput.addEventListener("input", (e) => {
+      const keyword = e.target.value.toLowerCase();
+      const filtered = users.filter(u => u.email.toLowerCase().includes(keyword));
+      renderUserList(filtered);
+    });
+
+  } else {
+    welcome.textContent = `Welcome back, ${user.email}!`;
+    info.textContent = "You are logged in to your AdTech account.";
+  }
+
+  // Save user data
+  saveBtn.addEventListener("click", () => {
+    const savedData = JSON.parse(localStorage.getItem("userData")) || {};
+    savedData[user.email] = {
+      name: usernameField.value.trim(),
+      notes: notesField.value.trim()
+    };
+    localStorage.setItem("userData", JSON.stringify(savedData));
+    savedMsg.style.display = "block";
+  });
+
+  // Logout
+  document.getElementById("logout").addEventListener("click", () => {
+    localStorage.removeItem("loggedInUser");
+    window.location.href = "index.html";
+  });
+
+  // Render user list + block/unblock + delete
+  function renderUserList(users) {
+
+    const userData = JSON.parse(localStorage.getItem("userData")) || {};
+    userList.innerHTML = "";
+    userCount.textContent = users.length;
+
+    users.forEach((u) => {
+
+      const div = document.createElement("div");
+      div.className = "user-item";
+
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "user-info";
+
+      const saved = userData[u.email] || { name: "—", notes: "—" };
+
+      infoDiv.innerHTML = `
+        <p><strong>Email:</strong> ${u.email}</p>
+        <p><strong>Name:</strong> ${saved.name}</p>
+        <p><strong>Notes:</strong> ${saved.notes}</p>
+      `;
+
+      // Delete button
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.className = "delete-btn";
+
+      deleteBtn.addEventListener("click", () => {
+        if (confirm(`Delete ${u.email}?`)) {
+          const allUsers = JSON.parse(localStorage.getItem("users")) || [];
+          const updated = allUsers.filter(x => x.email !== u.email);
+          localStorage.setItem("users", JSON.stringify(updated));
+
+          delete userData[u.email];
+          localStorage.setItem("userData", JSON.stringify(userData));
+
+          renderUserList(updated);
+        }
+      });
+
+      // Block button
+      const blockBtn = document.createElement("button");
+      blockBtn.className = "block-btn";
+
+      if (blockedUsers.includes(u.email)) {
+        blockBtn.textContent = "Unblock";
+        blockBtn.style.background = "#00cc66";
+      } else {
+        blockBtn.textContent = "Block";
+        blockBtn.style.background = "#ff8800";
+      }
+
+      blockBtn.addEventListener("click", () => {
+
+        if (blockedUsers.includes(u.email)) {
+          blockedUsers = blockedUsers.filter(b => b !== u.email);
+          alert(`${u.email} UNBLOCKED.`);
+        } else {
+          blockedUsers.push(u.email);
+          alert(`${u.email} BLOCKED.`);
+        }
+
+        localStorage.setItem("blockedUsers", JSON.stringify(blockedUsers));
+
+        renderUserList(JSON.parse(localStorage.getItem("users")));
+        renderBlockedList();
+      });
+
+      div.appendChild(infoDiv);
+      div.appendChild(deleteBtn);
+      div.appendChild(blockBtn);
+
+      userList.appendChild(div);
+    });
+  }
+
+  // Render blocked users
+  function renderBlockedList() {
+    blockedList.innerHTML = "";
+
+    if (blockedUsers.length === 0) {
+      blockedList.innerHTML = "<li>No blocked users.</li>";
+      return;
+    }
+
+    blockedUsers.forEach(email => {
+      const li = document.createElement("li");
+      li.textContent = email;
+      blockedList.appendChild(li);
+    });
+  }
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FixHub Login</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      background: rgba(255,255,255,0.1);
+      padding: 40px;
+      border-radius: 20px;
+      width: 320px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 0 20px rgba(255,255,255,0.2);
+      animation: fadeIn 1s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #00c6ff;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #00c6ff;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #0072ff;
+    }
+
+    .toggle {
+      text-align: center;
+      margin-top: 15px;
+      color: #ccc;
+      cursor: pointer;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+
+  <div class="container" id="login-container">
+    <h2 id="form-title">Login</h2>
+
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+
+    <button id="login-btn">Login</button>
+    <p class="toggle" id="toggle-form">Don't have an account? Sign up</p>
+  </div>
+  <script>
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("login-btn");
+    const toggleForm = document.getElementById("toggle-form");
+    const formTitle = document.getElementById("form-title");
+
+    let isLogin = true;
+
+    toggleForm.addEventListener("click", () => {
+      isLogin = !isLogin;
+      formTitle.textContent = isLogin ? "Login" : "Sign Up";
+      loginBtn.textContent = isLogin ? "Login" : "Sign Up";
+      toggleForm.textContent = isLogin ? "Don't have an account? Sign up" : "Already have an account? Login";
+    });
+
+    loginBtn.addEventListener("click", () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+
+      if (!email || !password) return alert("Please fill all fields");
+
+      // Admin login
+      if (email === "yeron@admin.com" && password === "admin123") {
+        localStorage.setItem("loggedInUser", JSON.stringify({ email, admin: true }));
+        window.location.href = "dashboard.html";
+        return;
+      }
+
+      if (isLogin) {
+        const users = JSON.parse(localStorage.getItem("users")) || [];
+        const user = users.find(u => u.email === email && u.password === password);
+
+        if (user) {
+          localStorage.setItem("loggedInUser", JSON.stringify(user));
+          window.location.href = "dashboard.html";
+        } else {
+          alert("Invalid credentials");
+        }
+      } else {
+        const users = JSON.parse(localStorage.getItem("users")) || [];
+        if (users.some(u => u.email === email)) return alert("User already exists!");
+
+        users.push({ email, password });
+        localStorage.setItem("users", JSON.stringify(users));
+        alert("Sign up successful! Please log in.");
+        isLogin = true;
+        formTitle.textContent = "Login";
+        loginBtn.textContent = "Login";
+        toggleForm.textContent = "Don't have an account? Sign up";
+      }
+    });
+
+    // animated background (bubbles)
+    const canvas = document.getElementById("bg");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const bubbles = Array.from({ length: 30 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 5 + 2,
+      d: Math.random() * 1
+    }));
+
+    function drawBubbles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "rgba(255,255,255,0.2)";
+      ctx.beginPath();
+      bubbles.forEach(b => {
+        ctx.moveTo(b.x, b.y);
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      });
+      ctx.fill();
+      moveBubbles();
+    }
+
+    function moveBubbles() {
+      bubbles.forEach(b => {
+        b.y -= b.d;
+        if (b.y < 0) {
+          b.y = canvas.height;
+          b.x = Math.random() * canvas.width;
+        }
+      });
+    }
+
+    setInterval(drawBubbles, 50);
+  </script>
+</body>
+</html>
+

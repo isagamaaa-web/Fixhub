@@ -1,0 +1,1434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FixHub — Troubleshooting Library</title>
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --bg:#0f1720;
+    --card:#0f1728;
+    --muted:#94a3b8;
+    --accent:#0b84ff;
+    --surface:#0b1220;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;background:linear-gradient(180deg,var(--bg),#081018);color:#e6eef6}
+  header{
+    padding:48px 20px 28px;
+    text-align:center;
+    background:linear-gradient(135deg,#071029 0%, #0b1430 60%);
+    box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+  }
+  header h1{margin:0;font-size:1.9rem;letter-spacing:-0.4px}
+  header p{margin:10px auto 0;max-width:900px;color:var(--muted);opacity:0.95}
+  .cta{display:inline-block;margin-top:14px;padding:10px 16px;border-radius:10px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;box-shadow:0 6px 18px rgba(11,132,255,0.12)}
+  main{max-width:1200px;margin:28px auto;padding:0 16px 80px}
+  .search-wrap{display:flex;justify-content:center;margin-bottom:18px}
+  .search-wrap input{width:100%;max-width:720px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,0.04);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));color:#e6eef6;outline:none;font-size:15px;box-shadow:0 6px 24px rgba(3,8,18,0.5)}
+  .grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap:14px;
+    align-items:start;
+    animation:grid-appear 420ms ease both;
+  }
+  @keyframes grid-appear{from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none}}
+
+  .device-btn{
+    background:linear-gradient(180deg,var(--card),#071320);
+    border-radius:12px;
+    padding:12px;
+    display:flex;
+    gap:12px;
+    align-items:center;
+    cursor:pointer;
+    border:1px solid rgba(255,255,255,0.03);
+    min-height:72px;
+    transition: transform 220ms cubic-bezier(.2,.9,.3,1), box-shadow 220ms, background 220ms;
+    box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+    color:var(--muted);
+    overflow:hidden;
+    position:relative;
+  }
+  .device-btn:focus{outline:2px solid rgba(11,132,255,0.18);outline-offset:3px}
+  .device-btn:hover{transform:translateY(-6px); box-shadow:0 18px 40px rgba(2,6,23,0.6); color:#fff}
+  .device-btn .logo{
+    width:52px;height:52px;border-radius:10px;flex:0 0 52px;display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.02);
+  }
+  .device-btn img, .device-btn svg{max-width:48px;max-height:48px;object-fit:contain;display:block}
+  .device-btn .label{font-weight:700;font-size:0.95rem;line-height:1.05;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .device-btn .sub{font-size:12px;color:var(--muted);margin-top:4px;font-weight:500}
+
+  /* small accent tag */
+  .badge{position:absolute;{10px};right:10px;top:10px;background:linear-gradient(90deg),#123a7a,#0b6ee6);padding:6px 8px;border-radius:999px;font-size:12px;color:#fff;box-shadow:0 6px 18px rgba(11,110,230,0.14)}
+  /* modal */
+  #solutions{
+    position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.98);
+    min-width:320px;max-width:980px;width:92%;max-height:86vh;overflow:auto;background:linear-gradient(180deg,#051123,#07182a);
+    border-radius:14px;padding:18px 18px 22px;border:1px solid rgba(255,255,255,0.04);box-shadow:0 40px 140px rgba(2,8,23,0.75);
+    display:none;z-index:1200;opacity:0;
+    transition:opacity 260ms ease, transform 260ms cubic-bezier(.2,.9,.3,1);
+  }
+  #solutions.show{display:block;opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #solutions header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+  #solutions h3{margin:0;font-size:1.15rem}
+  #solutions .meta{color:var(--muted);font-size:0.92rem;margin-top:4px}
+  #solutions .close{background:transparent;border:1px solid rgba(255,255,255,0.04);color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer}
+  #device-solutions{margin-top:12px;padding-left:18px;max-height:62vh;overflow:auto}
+  #device-solutions li{margin:10px 0;line-height:1.4;background:linear-gradient(90deg, rgba(255,255,255,0.015), transparent);padding:8px 10px;border-radius:8px;transition:transform 180ms, background 180ms}
+  #device-solutions li:hover{transform:translateX(6px);background:linear-gradient(90deg, rgba(11,132,255,0.06), transparent)}
+  /* footer */
+  footer{text-align:center;padding:16px;color:var(--muted);margin-top:36px;font-size:13px}
+  /* small screens tweak */
+  @media (max-width:720px){
+    header{padding:30px 12px}
+    .device-btn{min-height:64px;padding:10px}
+    .device-btn .logo{width:44px;height:44px}
+  }
+  /* subtle entrance for modal list items */
+  .fade-in-up { animation:fadeUp 360ms ease both }
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  /* nice scrollbar for solutions */
+  #device-solutions::-webkit-scrollbar{width:10px}
+  #device-solutions::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#082033,#0b2840);border-radius:12px}
+</style>
+</head>
+<body>
+  <header>
+    <h1>Adtech Solutions — Troubleshooting Library</h1>
+    <p>Official logos where available. Click a card to open 10+ practical troubleshooting tips. Smooth animations & keyboard accessible.</p>
+    <a class="cta" href="#devices">Explore Devices</a>
+  </header>
+
+  <main>
+    <div class="search-wrap" aria-hidden="false">
+      <input id="search" placeholder="Search device or app (e.g. 'Android', 'Ubuntu', 'Photoshop')" aria-label="Search devices"/>
+    </div>
+
+    <div id="devices" class="grid" aria-label="Device list">
+      <!-- Buttons generated via HTML for reliability and clear logos (keeps your original logos) -->
+      <!-- I'll include the same buttons you provided originally, trimmed for clarity -->
+      <!-- Android -->
+      <button class="device-btn" data-device="Android" title="Android">
+        <span class="logo"><img alt="Android" src="https://www.vectorlogo.zone/logos/android/android-icon.svg"></span>
+        <div>
+          <div class="label">Android</div>
+          <div class="sub">Phones & Tablets</div>
+        </div>
+      </button>
+
+      <!-- Apple -->
+      <button class="device-btn" data-device="Apple" title="Apple (iPhone / iPad / macOS)">
+        <span class="logo"><img alt="Apple" src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"></span>
+        <div>
+          <div class="label">Apple</div>
+          <div class="sub">iPhone / iPad / macOS</div>
+        </div>
+      </button>
+
+      <!-- HP -->
+      <button class="device-btn" data-device="HP" title="HP Laptops">
+        <span class="logo"><img alt="HP" src="https://www.vectorlogo.zone/logos/hp/hp-icon.svg"></span>
+        <div><div class="label">HP Laptop</div><div class="sub">Laptops & Notebooks</div></div>
+      </button>
+
+      <!-- Toshiba -->
+      <button class="device-btn" data-device="Toshiba" title="Toshiba">
+        <span class="logo"><img alt="Toshiba" src="https://www.svgrepo.com/show/306867/toshiba.svg"></span>
+        <div><div class="label">Toshiba Laptop</div><div class="sub">Legacy Models</div></div>
+      </button>
+
+      <!-- Samsung -->
+      <button class="device-btn" data-device="Samsung" title="Samsung">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 240 110" width="48" height="48" aria-hidden="true">
+            <ellipse cx="120" cy="55" rx="115" ry="40" fill="#0B57A4"></ellipse>
+            <g fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="36" letter-spacing="2">
+              <text x="30" y="68">S A M S U N G</text>
+            </g>
+          </svg>
+        </span>
+        <div><div class="label">Samsung</div><div class="sub">Phones & Tabs</div></div>
+      </button>
+
+      <!-- Dell Laptop -->
+      <button class="device-btn" data-device="Dell Laptop" title="Dell Laptop">
+        <span class="logo"><img alt="Dell" src="https://upload.wikimedia.org/wikipedia/commons/4/48/Dell_Logo.svg"></span>
+        <div><div class="label">Dell Laptop</div><div class="sub">Notebooks</div></div>
+      </button>
+
+      <!-- Dell Desktop -->
+      <button class="device-btn" data-device="Dell Desktop" title="Dell Desktop">
+        <span class="logo"><img alt="Dell" src="https://upload.wikimedia.org/wikipedia/commons/4/48/Dell_Logo.svg"></span>
+        <div><div class="label">Dell Desktop</div><div class="sub">Desktops</div></div>
+      </button>
+
+      <!-- iPad -->
+      <button class="device-btn" data-device="iPad" title="iPad">
+        <span class="logo"><img alt="Apple" src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"></span>
+        <div><div class="label">iPad</div><div class="sub">Apple Tablet</div></div>
+      </button>
+
+      <!-- Android Tablet -->
+      <button class="device-btn" data-device="Android Tablet" title="Android Tablet">
+        <span class="logo"><img alt="Android" src="https://www.vectorlogo.zone/logos/android/android-official.svg"></span>
+        <div><div class="label">Android Tablet</div><div class="sub">Tablets</div></div>
+      </button>
+
+      <!-- Linux -->
+      <button class="device-btn" data-device="Linux" title="Linux">
+        <span class="logo"><img alt="Linux" src="https://upload.wikimedia.org/wikipedia/commons/3/35/Tux.svg"></span>
+        <div><div class="label">Linux</div><div class="sub">Distros</div></div>
+      </button>
+
+      <!-- Kali Linux -->
+      <button class="device-btn" data-device="Kali Linux" title="Kali Linux">
+        <span class="logo"><img alt="Kali Linux" src="https://www.kali.org/images/kali-logo.svg"></span>
+        <div><div class="label">Kali Linux</div><div class="sub">Pen-testing</div></div>
+      </button>
+
+      <!-- Adobe -->
+      <button class="device-btn" data-device="Adobe Suite" title="Adobe Suite">
+        <span class="logo"><img alt="Adobe" src="https://logosandtypes.com/wp-content/uploads/2020/06/adobe.svg"></span>
+        <div><div class="label">Adobe Suite</div><div class="sub">Photoshop / Premiere</div></div>
+      </button>
+
+      <!-- Huawei -->
+      <button class="device-btn" data-device="Huawei" title="Huawei">
+        <span class="logo"><img alt="Huawei" src="https://upload.wikimedia.org/wikipedia/commons/0/0e/Huawei_Standard_logo.svg"></span>
+        <div><div class="label">Huawei</div><div class="sub">Phones</div></div>
+      </button>
+
+      <!-- Google Pixel -->
+      <button class="device-btn" data-device="Google Pixel" title="Google Pixel">
+        <span class="logo"><img alt="Google G" src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg"></span>
+        <div><div class="label">Google Pixel</div><div class="sub">Pixel Phones</div></div>
+      </button>
+
+      <!-- OnePlus -->
+      <button class="device-btn" data-device="OnePlus" title="OnePlus">
+        <span class="logo"><img alt="OnePlus" src="https://upload.wikimedia.org/wikipedia/commons/3/37/OnePlus_logo.svg"></span>
+        <div><div class="label">OnePlus</div><div class="sub">Phones</div></div>
+      </button>
+
+      <!-- Xiaomi -->
+      <button class="device-btn" data-device="Xiaomi" title="Xiaomi">
+        <span class="logo"><img alt="Xiaomi" src="https://upload.wikimedia.org/wikipedia/commons/2/29/Xiaomi_logo.svg"></span>
+        <div><div class="label">Xiaomi</div><div class="sub">MIUI Phones</div></div>
+      </button>
+
+      <!-- Oppo -->
+      <button class="device-btn" data-device="Oppo" title="Oppo">
+        <span class="logo"><img alt="OPPO" src="https://upload.wikimedia.org/wikipedia/commons/6/6e/OPPO_Logo.svg"></span>
+        <div><div class="label">Oppo</div><div class="sub">Phones</div></div>
+      </button>
+
+      <!-- Vivo -->
+      <button class="device-btn" data-device="Vivo" title="Vivo">
+        <span class="logo"><img alt="Vivo" src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Vivo_logo.svg"></span>
+        <div><div class="label">Vivo</div><div class="sub">Phones</div></div>
+      </button>
+
+      <!-- Realme -->
+      <button class="device-btn" data-device="Realme" title="Realme">
+        <span class="logo">
+          <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true"><rect rx="8" width="100" height="100" fill="#FFD400"></rect><text x="50" y="60" font-size="38" font-family="Arial" text-anchor="middle" fill="#000">r</text></svg>
+        </span>
+        <div><div class="label">Realme</div><div class="sub">Phones</div></div>
+      </button>
+
+      <!-- Nokia -->
+      <button class="device-btn" data-device="Nokia" title="Nokia">
+        <span class="logo"><img alt="Nokia" src="https://upload.wikimedia.org/wikipedia/commons/4/45/Nokia_wordmark.svg"></span>
+        <div><div class="label">Nokia</div><div class="sub">Phones</div></div>
+      </button>
+
+      <!-- Tecno -->
+      <button class="device-btn" data-device="Tecno" title="Tecno">
+        <span class="logo">
+          <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="#e94e1b"></circle><text x="50" y="58" text-anchor="middle" font-size="34" fill="#fff" font-family="Arial">T</text></svg>
+        </span>
+        <div><div class="label">Tecno</div><div class="sub">Phones</div></div>
+      </button>
+
+      <!-- Infinix -->
+      <button class="device-btn" data-device="Infinix" title="Infinix">
+        <span class="logo">
+          <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true"><rect rx="15" width="100" height="100" fill="#1eae98"></rect><text x="50" y="60" text-anchor="middle" font-size="34" fill="#fff" font-family="Arial">X</text></svg>
+        </span>
+        <div><div class="label">Infinix</div><div class="sub">Phones</div></div>
+      </button>
+
+      <!-- Lenovo -->
+      <button class="device-btn" data-device="Lenovo" title="Lenovo">
+        <span class="logo"><img alt="Lenovo" src="https://upload.wikimedia.org/wikipedia/commons/4/4d/Lenovo_logo.svg"></span>
+        <div><div class="label">Lenovo</div><div class="sub">Laptops</div></div>
+      </button>
+
+      <!-- Acer -->
+      <button class="device-btn" data-device="Acer" title="Acer">
+        <span class="logo"><img alt="Acer" src="https://upload.wikimedia.org/wikipedia/commons/4/44/Acer_2016.svg"></span>
+        <div><div class="label">Acer</div><div class="sub">Laptops</div></div>
+      </button>
+
+      <!-- Asus -->
+      <button class="device-btn" data-device="Asus" title="Asus">
+        <span class="logo"><img alt="Asus" src="https://upload.wikimedia.org/wikipedia/commons/4/4d/ASUS_Logo.svg"></span>
+        <div><div class="label">Asus</div><div class="sub">Laptops</div></div>
+      </button>
+
+      <!-- Microsoft Surface -->
+      <button class="device-btn" data-device="Microsoft Surface" title="Microsoft Surface">
+        <span class="logo"><img alt="Microsoft" src="https://upload.wikimedia.org/wikipedia/commons/9/96/Microsoft_logo_(2012).svg"></span>
+        <div><div class="label">Microsoft Surface</div><div class="sub">Tablets & Laptops</div></div>
+      </button>
+
+      <!-- MSI -->
+      <button class="device-btn" data-device="MSI" title="MSI">
+        <span class="logo"><img alt="MSI" src="https://upload.wikimedia.org/wikipedia/commons/0/0f/MSI_logo.svg"></span>
+        <div><div class="label">MSI</div><div class="sub">Gaming PCs</div></div>
+      </button>
+
+      <!-- Razer -->
+      <button class="device-btn" data-device="Razer" title="Razer">
+        <span class="logo"><svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="#00ff8c"></circle><text x="50" y="58" text-anchor="middle" font-size="26" fill="#000" font-family="Arial">R</text></svg></span>
+        <div><div class="label">Razer</div><div class="sub">Peripherals</div></div>
+      </button>
+
+      <!-- Intel -->
+      <button class="device-btn" data-device="Intel" title="Intel">
+        <span class="logo"><img alt="Intel" src="https://upload.wikimedia.org/wikipedia/commons/c/c9/Intel_logo_%282020%29.svg"></span>
+        <div><div class="label">Intel</div><div class="sub">CPU & Chipsets</div></div>
+      </button>
+
+      <!-- AMD -->
+      <button class="device-btn" data-device="AMD" title="AMD">
+        <span class="logo"><img alt="AMD" src="https://upload.wikimedia.org/wikipedia/commons/2/2d/AMD_logo.svg"></span>
+        <div><div class="label">AMD</div><div class="sub">CPU & GPU</div></div>
+      </button>
+
+      <!-- Nvidia -->
+      <button class="device-btn" data-device="Nvidia" title="Nvidia">
+        <span class="logo"><img alt="Nvidia" src="https://upload.wikimedia.org/wikipedia/commons/2/21/Nvidia_logo.svg"></span>
+        <div><div class="label">Nvidia</div><div class="sub">GPUs</div></div>
+      </button>
+
+      <!-- TP-Link -->
+      <button class="device-btn" data-device="TP-Link" title="TP-Link">
+        <span class="logo"><img alt="TP-Link" src="https://upload.wikimedia.org/wikipedia/commons/4/45/TP-Link_logo.svg"></span>
+        <div><div class="label">TP-Link</div><div class="sub">Networking</div></div>
+      </button>
+
+      <!-- OS & software -->
+      <button class="device-btn" data-device="Windows" title="Windows">
+        <span class="logo"><img alt="Windows" src="https://upload.wikimedia.org/wikipedia/commons/5/5f/Windows_logo_-_2021.svg"></span>
+        <div><div class="label">Windows</div><div class="sub">Microsoft OS</div></div>
+      </button>
+
+      <button class="device-btn" data-device="macOS" title="macOS">
+        <span class="logo"><img alt="Apple" src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"></span>
+        <div><div class="label">macOS</div><div class="sub">Apple Desktop OS</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Chrome OS" title="Chrome OS">
+        <span class="logo"><img alt="Chrome OS" src="https://upload.wikimedia.org/wikipedia/commons/a/a6/Google_Chrome_icon_%282011%29.png"></span>
+        <div><div class="label">Chrome OS</div><div class="sub">Chromebooks</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Ubuntu" title="Ubuntu">
+        <span class="logo"><img alt="Ubuntu" src="https://upload.wikimedia.org/wikipedia/commons/2/2e/Ubuntu_logo.svg"></span>
+        <div><div class="label">Ubuntu</div><div class="sub">Linux Distro</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Fedora" title="Fedora">
+        <span class="logo"><img alt="Fedora" src="https://upload.wikimedia.org/wikipedia/commons/3/3f/Fedora_logo.svg"></span>
+        <div><div class="label">Fedora</div><div class="sub">Linux Distro</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Arch Linux" title="Arch Linux">
+        <span class="logo"><img alt="Arch" src="https://upload.wikimedia.org/wikipedia/commons/1/1f/Archlinux-icon-crystal-64.svg"></span>
+        <div><div class="label">Arch Linux</div><div class="sub">Advanced Linux</div></div>
+      </button>
+
+      <!-- Consoles -->
+      <button class="device-btn" data-device="PlayStation" title="PlayStation">
+        <span class="logo"><img alt="PlayStation" src="https://upload.wikimedia.org/wikipedia/commons/5/5f/PlayStation_Logo.svg"></span>
+        <div><div class="label">PlayStation</div><div class="sub">Sony Console</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Xbox" title="Xbox">
+        <span class="logo"><img alt="Xbox" src="https://upload.wikimedia.org/wikipedia/commons/4/43/Xbox_logo_%282019%29.svg"></span>
+        <div><div class="label">Xbox</div><div class="sub">Microsoft Console</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Nintendo Switch" title="Nintendo Switch">
+        <span class="logo"><img alt="Nintendo Switch" src="https://upload.wikimedia.org/wikipedia/commons/0/0d/Nintendo_Switch_logo.svg"></span>
+        <div><div class="label">Nintendo Switch</div><div class="sub">Nintendo</div></div>
+      </button>
+
+      <!-- Printers / Cameras -->
+      <button class="device-btn" data-device="Canon" title="Canon">
+        <span class="logo"><img alt="Canon" src="https://upload.wikimedia.org/wikipedia/commons/8/86/Canon_logo.svg"></span>
+        <div><div class="label">Canon</div><div class="sub">Printers & Cameras</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Nikon" title="Nikon">
+        <span class="logo"><img alt="Nikon" src="https://upload.wikimedia.org/wikipedia/commons/9/93/Nikon_wordmark.svg"></span>
+        <div><div class="label">Nikon</div><div class="sub">Cameras</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Epson" title="Epson">
+        <span class="logo"><img alt="Epson" src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Epson_logo.svg"></span>
+        <div><div class="label">Epson</div><div class="sub">Printers</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Logitech" title="Logitech">
+        <span class="logo"><img alt="Logitech" src="https://upload.wikimedia.org/wikipedia/commons/7/78/Logitech_2015_logo.svg"></span>
+        <div><div class="label">Logitech</div><div class="sub">Peripherals</div></div>
+      </button>
+
+      <!-- Productivity & apps -->
+      <button class="device-btn" data-device="Microsoft Office" title="Microsoft Office">
+        <span class="logo"><img alt="Office" src="https://upload.wikimedia.org/wikipedia/commons/7/79/Microsoft_Office_logo_%282019-present%29.svg"></span>
+        <div><div class="label">Microsoft Office</div><div class="sub">Word / Excel / PowerPoint</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Zoom" title="Zoom">
+        <span class="logo"><img alt="Zoom" src="https://upload.wikimedia.org/wikipedia/commons/0/08/Zoom_Communications_Logo.svg"></span>
+        <div><div class="label">Zoom</div><div class="sub">Meetings</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Spotify" title="Spotify">
+        <span class="logo"><img alt="Spotify" src="https://upload.wikimedia.org/wikipedia/commons/1/19/Spotify_logo_without_text.svg"></span>
+        <div><div class="label">Spotify</div><div class="sub">Music</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Discord" title="Discord">
+        <span class="logo"><img alt="Discord" src="https://upload.wikimedia.org/wikipedia/commons/9/98/Discord_logo.svg"></span>
+        <div><div class="label">Discord</div><div class="sub">Chat</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Blender" title="Blender">
+        <span class="logo"><img alt="Blender" src="https://upload.wikimedia.org/wikipedia/commons/0/0c/Blender_logo_no_text.svg"></span>
+        <div><div class="label">Blender</div><div class="sub">3D</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Unity" title="Unity">
+        <span class="logo"><img alt="Unity" src="https://upload.wikimedia.org/wikipedia/commons/c/c2/Unity_2021.svg"></span>
+        <div><div class="label">Unity</div><div class="sub">Game Engine</div></div>
+      </button>
+
+      <button class="device-btn" data-device="Unreal Engine" title="Unreal Engine">
+        <span class="logo"><img alt="Unreal Engine" src="https://upload.wikimedia.org/wikipedia/commons/1/18/Unreal_Engine_Logo.svg"></span>
+        <div><div class="label">Unreal Engine</div><div class="sub">Game Engine</div></div>
+      </button>
+
+      <!-- Many more you included originally are present in the TROUBLESHOOT object below -->
+    </div>
+
+    <!-- Solutions Modal -->
+    <section id="solutions" aria-live="polite" role="dialog" aria-modal="true" aria-hidden="true">
+      <header>
+        <div>
+          <h3 id="device-title">Device</h3>
+          <div id="device-meta" class="meta">Practical fixes and checks</div>
+        </div>
+        <div>
+          <button class="close" id="closeModal" aria-label="Close">Close</button>
+        </div>
+      </header>
+      <ol id="device-solutions" class="fade-in-up"></ol>
+    </section>
+  </main>
+
+  <footer>&copy; 2025 FixHub Solutions. All rights reserved.</footer>
+
+<script>
+/* ---------- TROUBLESHOOT dataset (merged from your JS parts) ---------- */
+/* I included the full large object you provided (trimmed comments) so every card above has tips.
+   If you later want to expand or edit any entry, update this object. */
+const TROUBLESHOOT = {
+"Android": [
+"App crashes → Clear app cache (Settings → Apps → [app] → Storage → Clear cache) and update the app.",
+"Slow performance → Remove unused apps, clear storage, restart device and consider a lightweight launcher.",
+"Battery drains quickly → Check Battery usage in Settings, restrict background apps, enable Battery Saver.",
+"Wi-Fi disconnects → Forget network, re-add, restart router, reset network settings if needed.",
+"Bootloop after update → Boot to Recovery, wipe cache partition. Backup data and factory reset if persists.",
+"GPS inaccurate → Toggle location mode to High Accuracy and calibrate compass.",
+"App install blocked → Enable Unknown sources if installing APKs or clear Play Store data.",
+"Notifications delayed → Turn off battery optimization for affected apps and lock them in recent apps.",
+"Touchscreen unresponsive → Reboot, remove screen protector, test Safe Mode to isolate faulty app.",
+"Storage full quickly → Clear cached data, move photos to SD or cloud, uninstall large apps.",
+"Bluetooth pairing problems → Clear Bluetooth cache and unpair then re-pair devices.",
+"Mobile data not working → Check APN settings and toggle mobile data off/on.",
+"Speaker or mic issues → Test in safe mode, check app permissions, clean ports.",
+"Overheating during gaming → Lower refresh rate/resolution, close background processes, enable performance throttling.",
+"Factory reset refused → Ensure device has enough battery and try via Recovery Mode."
+],
+"Apple": [
+"Frozen screen → Force restart (model-specific).",
+"App install/update fails → Check Apple ID/payment and storage.",
+"Battery health showing decline → Replace battery if max capacity low.",
+"No audio → Disable Bluetooth audio routing and reboot device.",
+"iCloud sync failing → Sign out/in, check Apple System Status.",
+"Touch ID/Face ID not working → Re-register biometrics and clean sensors.",
+"App crashes after update → Delete and reinstall app, check compatibility.",
+"Unable to backup → Ensure iCloud storage and stable Wi-Fi.",
+"Cellular data issues → Reset Network Settings and reinsert SIM.",
+"Overheating on charging → Remove case and avoid heavy use during charge.",
+"App permissions reset after update → Regrant permissions in Settings.",
+"App not optimized for Apple Silicon (macOS) → Use Rosetta 2 if required.",
+"AirDrop not visible → Toggle Bluetooth and Wi-Fi, ensure visibility settings.",
+"FaceTime / Call quality poor → Test network and toggle Wi-Fi Calling (carrier dependent).",
+"iTunes/Finder doesn’t recognise device → Update iTunes/Finder and use original cable."
+],
+"Samsung":[
+"Fingerprint sensor fails → Clean sensor and re-register fingerprint.",
+"Camera app crashes → Clear Camera app cache and data, update system.",
+"Battery drains after update → Check for rogue apps, clear cache partition.",
+"System UI freeze → Boot to Safe Mode to isolate third-party apps.",
+"Galaxy Store problems → Clear Galaxy Store cache and sign into Samsung account.",
+"S-Pen not working (Note/Tab) → Re-pair S-Pen and replace nib if worn.",
+"Edge screen gestures misbehaving → Reset Edge panel settings.",
+"Always On Display won't update → Disable and re-enable AOD or update theme.",
+"One UI animations lag → Lower animation scale in Developer Options.",
+"Wireless charging slow → Ensure coil alignment and use original fast wireless charger.",
+"Notification channels missing → Check app notification settings and ensure Do Not Disturb off.",
+"DeX connection issue → Reinstall DeX drivers and test different USB-C cable.",
+"Bluetooth audio stuttering → Disable high-quality codecs if issues persist.",
+"Samsung Pay failed → Clear Samsung Pay cache and re-register payment methods.",
+"Phone hotspot doesn't work → Reset network settings and toggle tethering options."
+],
+"Dell Laptop":[
+"Boot device not found → Check BIOS boot order and reseat/replace SSD/HDD.",
+"Overheating → Clean fans, repaste CPU if old, update BIOS.",
+"System freezes → Run Dell diagnostics (F12) and memtest86.",
+"Battery shows 0% plugged → Test different charger and check DC jack.",
+"No display → Try external monitor to isolate issue.",
+"BIOS update failed → Use BIOS recovery method from Dell support.",
+"Slow boot → Disable unnecessary startup entries in Task Manager.",
+"Fan loud constantly → Check for background CPU-heavy processes or BIOS fan profiles.",
+"Wi-Fi adapter missing → Reinstall wireless drivers or check physical Wi-Fi switch.",
+"Trackpad not responding → Disable external mouse, update drivers, check BIOS setting.",
+"Battery health decreased → Run battery report and consider replacement.",
+"Docking station not detected → Update docking firmware and drivers.",
+"Keyboard backlight not working → Update Dell QuickSet/keyboard drivers.",
+"Windows activation issues after hardware change → Use digital licence reactivation",
+"Strange beeps on boot → Check beep codes and consult Dell support doc."
+],
+"Dell Desktop":[
+"POST beeps → Check beep code chart and reseat RAM/GPU.",
+"Random shutdowns → Check PSU and thermals, test with another PSU.",
+"Slow storage → Upgrade to NVMe SSD and check SMART status.",
+"GPU driver crashes → Use DDU to clean drivers and reinstall latest.",
+"USB ports dead → Reinstall USB controller drivers and test different ports.",
+"No power → Verify PSU cables and motherboard connectors.",
+"Boot into BIOS only → Check drive detection and boot order.",
+"Fan or coil whine → Isolate component and replace noisy fan or GPU.",
+"OS not detecting full RAM → Check BIOS and Windows limits, reseat memory.",
+"RAID array degraded → Repair or replace failed disk and rebuild array.",
+"Network card not recognized → Try different PCIe slot and update driver.",
+"Case front panel connectors not working → Reseat connectors on motherboard.",
+"Windows BSOD with DRIVER_POWER_STATE_FAILURE → Update drivers and power settings.",
+"Slow system after update → Roll back failing driver or restore to previous snapshot.",
+"POST code on motherboard display → Consult motherboard manual for code meaning."
+],
+"HP":[
+"Won't power on → Remove battery and AC, hold power 15s, reconnect.",
+"Overheating → Clean vents, update BIOS and drivers.",
+"Slow boot → Disable startup apps and enable SSD if available.",
+"Battery not charging → Test with alternate adapter, update BIOS.",
+"No display → Test external monitor; if external works, screen/cable issue.",
+"BIOS password forgotten → Contact HP support with proof of ownership.",
+"HP Support Assistant errors → Reinstall utility and update drivers.",
+"Audio not working → Reinstall Realtek drivers and check audio service.",
+"Touchscreen calibration off → Calibrate in Windows settings.",
+"Keyboard or function keys not responding → Update keyboard driver and HP Hotkey Support.",
+"Camera not detected → Check privacy shutter and reinstall camera driver.",
+"Audio jack not detecting headset → Clean port and test another headset.",
+"Battery health declining fast → Calibrate and consider replacement.",
+"SSD performance slow → Update firmware and enable AHCI in BIOS.",
+"HP jumpstart/adware on fresh system → Remove OEM bloat and disable unwanted startup items."
+],
+"Toshiba":[
+"Black screen on boot → Power drain (remove battery + adapter, hold power 20s), reseat RAM.",
+"Battery drains quickly → Calibrate battery and update power settings.",
+"Keyboard issues → Clean keys, replace keyboard if hardware fault.",
+"Wi-Fi disconnects → Update wireless drivers and check manufacturer utility.",
+"Slow HDD performance → Run chkdsk, consider SSD upgrade.",
+"No sound → Reinstall audio drivers and check playback device.",
+"BIOS update required → Follow Toshiba's recovery/BIOS update instructions carefully.",
+"UEFI boot problems → Ensure secure boot settings and boot mode are correct.",
+"Touchpad behaving oddly → Update touchpad driver and disable enhancements.",
+"Sleep/hibernate won't resume → Update power drivers and chipset firmware.",
+"Optical drive not reading → Clean lens and test with known good disc.",
+"Screen flicker → Check display cable and GPU drivers.",
+"Laptop not recognizing SD card → Test with another card and update card reader driver.",
+"Network adapter disabled after sleep → Disable power saving for adapter.",
+"System restore failed → Use recovery media to reinstall OS."
+],
+"Huawei":[
+"AppGallery won't download apps → Clear AppGallery cache and confirm network.",
+"Battery draining → Disable auto-start apps and use built-in power manager.",
+"Overheating → Close heavy apps, disable background refresh and avoid direct sunlight.",
+"Camera problems → Clear camera cache and ensure lens clean; update firmware.",
+"Update fails → Use HiSuite on PC for firmware update if OTA fails.",
+"No mobile signal → Reset network settings and ensure correct band for region.",
+"Google services missing (new Huawei models) → Use App alternatives and web apps or G-space workarounds.",
+"Fast charging not working → Try different cable and check charger compatibility.",
+"Fingerprint not detected → Re-register after cleaning sensor and fingers.",
+"Bluetooth pairing fails → Clear BT cache and repair devices.",
+"VoLTE not working → Contact carrier, enable in SIM settings.",
+"Microphone issues in calls → Test in safe mode to rule out third-party apps.",
+"App permissions refused → Regrant permissions and disable battery optimization for the app.",
+"System updates cause random reboots → Factory reset after backing up data.",
+"SIM recognition errors → Clean SIM slot and test another SIM."
+],
+"Adobe Suite":[
+"App crashes on startup → Reset preferences and remove third-party plugins.",
+"Export encoder error → Update Adobe Media Encoder and clear media cache.",
+"Slow renders → Increase memory allocation and enable GPU acceleration.",
+"Fonts missing or corrupt → Reinstall fonts and clear font cache.",
+"Scratch disk full → Change scratch disk to another drive or free space.",
+"Project file corrupt → Use autosaves or import into new project.",
+"Color mismatch in export → Check color profiles and convert to target profile before export.",
+"GPU acceleration causing glitches → Disable GPU acceleration to test.",
+"Plugins incompatible after update → Reinstall or get compatible versions.",
+"Audio and video out of sync → Use rendered preview and align timestamps, check FPS.",
+"Unable to install updates → Use Adobe Creative Cloud Cleaner Tool then reinstall.",
+"Licensing/activation errors → Sign out and sign back into Creative Cloud, check subscription.",
+"Slow file opening → Optimize assets and proxies, avoid network drives.",
+"Media offline after moving files → Relink media or use 'Locate' function.",
+"Multicam sync issues → Recreate multicam with consistent audio reference and settings."
+],
+"Linux":[
+"Black screen after GPU update → Boot to TTY and reinstall proper driver.",
+"Package manager errors → Use apt/dpkg repair commands or distribution equivalents.",
+"Wi-Fi driver unavailable → Identify hardware and install firmware package.",
+"Sound not working → Restart PulseAudio and check ALSA mixer.",
+"System freeze → Inspect dmesg and journalctl for hardware errors.",
+"Permission denied for devices → Add user to appropriate groups (e.g., plugdev,disk).",
+"Display scaling issues → Use xrandr or GNOME display settings.",
+"Kernel panics → Boot previous kernel and investigate module differences.",
+"Bootloader (GRUB) broken → Reinstall GRUB from live media.",
+"Time drift → Enable NTP (timedatectl) and check RTC battery.",
+"USB device not mounting → Check dmesg, use lsblk and mount manually.",
+"Low battery detection on laptops → Install TLP and configure thermal management.",
+"Remote SSH login fails → Check SSH keys, firewall, and sshd_config.",
+"Swap not used → Verify swappiness and swap partitions/files.",
+"System updates break desktop → Rollback to previous snapshot (Timeshift/btrfs) then debug culprit package."
+],
+"Kali Linux":[
+"Wireless adapter not detected → Install Realtek/Broadcom drivers and firmware.",
+"Tools permission denied → Use sudo or proper capabilities.",
+"Metasploit DB not running → Ensure PostgreSQL running and reinit DB.",
+"GUI not starting → Reinstall desktop or switch display manager.",
+"VM slow → Install Guest Additions/VMware Tools and increase RAM/CPU.",
+"No internet in VM → Set NAT/bridged properly and check host firewall.",
+"Aircrack-ng can't put adapter in monitor mode → Use supported chipset & drivers and blacklist conflicting modules.",
+"apt repository errors → Restore official Kali rolling repos in /etc/apt/sources.list.",
+"Tor / proxy connection issues → Verify proxy settings and DNS leak protection.",
+"Persistence problems on live USB → Recreate persistent partition correctly.",
+"Packet injection failing → Verify chipset & driver compatibility and use proper commands.",
+"Tool package conflicts → Use apt policy and reinstall specific package versions.",
+"Python module errors for tools → pip3 install -r requirements.txt in virtualenv.",
+"Metasploit exploits not working → Update metasploit-framework and database.",
+"File permission issues on mounted drives → Adjust mount options and file permissions."
+],
+"iPad":[
+"App crashes → Update iPadOS and reinstall apps.",
+"Won't charge → Clean port and try a different cable/charger.",
+"Screen unresponsive → Force restart and check for updates.",
+"Battery drains → Disable Background App Refresh and low-power mode.",
+"iCloud backup failing → Check iCloud storage and Wi-Fi connectivity.",
+"Accessory not supported → Check MFi certification and firmware of accessory.",
+"Bluetooth keyboard not pairing → Reset BT and re-pair.",
+"Split view not working → Ensure app supports multitasking and restart.",
+"Touch ID/Face ID not recognizing → Re-register biometrics and clean sensors.",
+"Apple Pencil not pairing → Charge Pencil and re-pair in Bluetooth settings.",
+"Overheating when charging → Remove case and reduce heavy usage.",
+"App data not syncing → Reinstall app and check app-specific sync settings.",
+"iOS update stuck → Update via Finder/iTunes or use recovery mode.",
+"Screen flicker after update → Reset settings or reflash via DFU if severe.",
+"Cannot restore from backup → Use different backup or update both devices to same iOS version."
+],
+"Android Tablet":[
+"Slow UI → Clear caches and uninstall heavy apps.",
+"App install fails → Free space and clear Play Store cache.",
+"Touchscreen ghosting → Test safe mode and remove protector.",
+"No sound → Check app permissions and system volume.",
+"Wi-Fi unstable → Reset network settings or update firmware.",
+"SD card not recognized → Format in tablet after backup.",
+"Tablet won't wake → Force restart and check for OS updates.",
+"Camera quality poor → Check lens and app settings.",
+"Battery not charging → Clean port, try another charger, test battery.",
+"Multi-user issues → Remove secondary profiles and reset owner account.",
+"App scaling problems → Change display size in settings.",
+"Notifications silent → Check Do Not Disturb and app notification settings.",
+"Default apps reset → Lock preferred apps in settings or clear defaults carefully.",
+"Play Store shows license error → Revalidate via Google account and reinstall Play Store.",
+"Tablet stuck during update → Use recovery to wipe cache or sideload update."
+],
+"Google Pixel":[
+"Frequent reboots → Check for updates and perform factory reset as last resort.",
+"Camera overheating → Lower recording quality and close background apps.",
+"Battery drain after update → Clear cache partition and monitor app battery usage.",
+"Cellular drops → Reset network settings and contact carrier for provisioning.",
+"Bootloop after tinkering → Reflash factory image via Fastboot tools.",
+"Pixel camera app HDR problems → Clear camera app data and force stop.",
+"Microphone low during calls → Test with safe mode and update firmware.",
+"Can't receive RCS messages → Ensure carrier supports RCS and correct settings.",
+"Face Unlock not working → Re-register face data and ensure good lighting.",
+"Bluetooth audio cutting → Disable high-quality codecs and re-pair.",
+"Adaptive battery not improving life → Reset adaptive battery data and retrain.",
+"Pixel Stand charging issues → Update Pixel Stand firmware and check charger.",
+"Edge lighting or gestures not working → Reenable in settings and restart device.",
+"Slow fingerprint recognition → Clean sensor and re-register fingerprints.",
+"Sensor calibration off → Calibrate compass by moving device in figure-eight."
+],
+"OnePlus":[
+"OxygenOS update stuck → Boot to recovery and apply update or wipe cache.",
+"Wi-Fi disconnects → Reboot router and forget/reconnect network.",
+"Charging slow → Use original charger and check cable/power brick.",
+"Screen flicker → Update display driver or toggle adaptive refresh rate.",
+"Touch issues with screen protector → Remove protector and retest.",
+"Alert slider not functioning → Check software settings and reboot.",
+"Gestures not responsive → Reset gesture settings and update system.",
+"Background app restrictions kill apps → Whitelist apps in battery settings.",
+"Bluetooth devices disconnect → Clear Bluetooth device list and re-pair.",
+"Hotspot unstable → Change AP band and reboot tethered devices.",
+"Fingerprint sensor fails → Re-register fingerprint and clean sensor.",
+"OxygenOS launcher crashes → Clear launcher data and reinstall updates.",
+"Notification light not working → Check notifications and Do Not Disturb settings.",
+"Gaming mode not blocking calls → Adjust DND and gaming settings.",
+"Slow animation or UI lag → Reduce animations and enable developer options tweaks."
+],
+"Xiaomi":[
+"MIUI ads enabled → Turn off recommendations and disable MSA/service where available.",
+"Play Store installation issues → Clear Google Play and Play Services caches.",
+"Overheating while gaming → Use performance mode cautiously and enable cooling.",
+"Notifications missing → Lock apps in recent screen and disable battery optimizations.",
+"Fast charging not engaging → Use original cable and check charging port.",
+"Second space issues → Sync or remove to fix conflicts.",
+"Camera quality inconsistent → Update camera app and use recommended settings.",
+"Theme causing lag → Revert to default theme and clear theme cache.",
+"Mi Cloud sync fails → Re-login to Mi Account and check sync settings.",
+"VoLTE problems → Check SIM settings and carrier support.",
+"Infrared remote not working → Reconfigure remote app and device profile.",
+"App permissions reset after update → Re-grant and lock app settings.",
+"Frequent memory usage spikes → Use Cleaner and uninstall heavy apps.",
+"System update bricked phone → Use MiFlash with fastboot to restore stock ROM.",
+"App autostart blocked → Allow in security app autostart settings."
+],
+"Oppo":[
+"Delayed notifications due to power manager → Whitelist apps from battery saver.",
+"Camera blurry → Clean lens and reset camera settings.",
+"VoLTE unavailable → Ensure SIM settings and carrier compatibility.",
+"USB OTG not working → Enable OTG in settings and test with another device.",
+"Charging takes long → Check cable and use recommended VOOC charger.",
+"System update failed → Retry with stable Wi-Fi or via local update file.",
+"Notification shade lag → Clear cache and disable heavy animations.",
+"Screen recording audio missing → Grant mic permission to recorder app.",
+"Launcher crashes → Clear launcher data and reinstall updates.",
+"Bluetooth accessories drop out → Reset Bluetooth and test other devices.",
+"Background apps being killed → Disable aggressive clean-up in phone manager.",
+"Mic audio low → Test with safe mode and clean microphone hole.",
+"App permissions revoked after restart → Lock necessary apps in background.",
+"Hotspot won't connect → Change AP band and verify tethering limit.",
+"Fingerprint calibration poor → Re-register fingerprint in different angles."
+],
+"Vivo":[
+"Random app closures → Update apps, clear cache and reboot.",
+"Fingerprint not recognized → Re-register fingerprint and clean sensor.",
+"Slow UI → Clear app caches and disable animations.",
+"Charging stuck at percentage → Calibrate battery (drain and full charge).",
+"Bluetooth audio sync issues → Re-pair and test codecs.",
+"System update unsuccessful → Use recovery to apply update.",
+"Camera lag on burst mode → Reset camera settings and ensure storage speed.",
+"Game box blocking notifications → Disable game box or allow notifications.",
+"Network switching poor → Set preferred network manually in SIM settings.",
+"Third-party app installs blocked → Allow unknown sources for trusted APKs.",
+"Heat while charging → Avoid heavy use during charging and remove case.",
+"Notification LED not working → Check notification settings per app.",
+"Speaker distortion at high volume → Test with safe mode and update firmware.",
+"Background data restricted → Enable background data in settings for apps.",
+"Screen calibration off → Run display calibration (if available) or reset display settings."
+],
+"Realme":[
+"Permissions reset → Regrant permissions and lock app in recent menu.",
+"Background apps killed by optimization → Disable optimization for needed apps.",
+"Hotspot instability → Reset network settings and configure AP band.",
+"Camera lag → Clear camera cache and free memory.",
+"VoLTE not connecting → Enable in SIM settings and confirm carrier provisioning.",
+"App compatibility after update → Roll back app or contact developer.",
+"Charging slow → Use original charger and test cable.",
+"Fingerprint fails → Re-register prints and clean sensor.",
+"Notification silence → Disable DO NOT DISTURB and allow important apps.",
+"GPS accuracy poor → Toggle location mode to high accuracy and calibrate compass.",
+"System UI crashes → Clear cache partition and disable third-party launchers.",
+"Bluetooth device not found → Reset Bluetooth adapter and scan again.",
+"App permission prompts not showing → Reset app preferences in settings.",
+"Network roaming issues → Check APN and enable roaming if needed.",
+"RAM cleaning causing app restarts → Adjust auto-clean schedule or disable aggressive cleaning."
+],
+"Nokia":[
+"System updates fail → Ensure stable Wi-Fi and sufficient storage, restart and retry.",
+"Call quality issues → Test on other SIM and contact carrier.",
+"App crashes → Clear app data and reinstall.",
+"Charging indicates but doesn't increase → Replace cable and test another charger.",
+"Slow performance → Clear storage and update apps.",
+"Bluetooth issues → Clear paired devices and re-pair.",
+"Camera errors → Clear camera cache and ensure latest app version.",
+"Fingerprint not registering → Clean sensor and re-register.",
+"Speakerphone distorted → Test in safe mode and check audio drivers.",
+"SIM not detected → Reseat SIM and check SIM tray for damage.",
+"VoLTE not active → Confirm carrier support and enable in settings.",
+"Notification access denied → Check app notification permissions.",
+"Wi-Fi frequency issues (2.4/5GHz) → Force connect to compatible band in router.",
+"Storage encryption errors → Backup and factory reset if necessary.",
+"App permissions keep resetting → Lock apps and disable battery optimizations for them."
+],
+"Tecno":[
+"Play Store install errors → Clear Play Store & Google Play Services caches and re-login.",
+"Overheating → Limit background processes and close heavy apps.",
+"Charging port corroded → Clean contacts gently and test another cable.",
+"Touchscreen unresponsive → Boot to safe mode and test.",
+"Speaker low → Disable audio effects and test other apps.",
+"Notifications delayed → Allow apps to autostart and lock in recent apps.",
+"Fingerprint fails to register → Clean sensor and retry registration.",
+"Camera app freezes → Clear camera cache or reinstall camera updates.",
+"Network dropouts → Reset network settings and update modem firmware if available.",
+"App crashes on launch → Reinstall app and check permissions.",
+"Storage management issues → Use storage cleaner and move media to SD.",
+"SIM switch issues → Test both SIM slots and check carrier provisioning.",
+"Battery calibration wrong → Do a full charge cycle to calibrate.",
+"Bluetooth pairing limited → Remove old paired devices and reset BT module.",
+"Screen brightness flicker → Disable adaptive brightness and update display driver."
+],
+"Infinix":[
+"Random restarts → Uninstall recent apps and update system firmware.",
+"Notifications missing → Lock apps in recent and allow background activity.",
+"Storage fills quickly → Clear cache and move media to SD card.",
+"Camera fails → Update camera app and clear cache.",
+"Wi-Fi authentication errors → Re-enter password and restart router.",
+"App permissions not working → Reset app preferences and regrant permissions.",
+"Battery percentage jumping → Calibrate battery and check battery health.",
+"Touchscreen lag → Reduce background services and update firmware.",
+"SIM not registering → Try SIM in another phone and reseat the SIM.",
+"USB not recognized → Change cable and toggle USB debugging on/off.",
+"Screen artifacts → Reboot and check for screen protector interference.",
+"Slow charging → Check charger and port for damage.",
+"Bluetooth audio choppy → Re-pair and test different codec settings.",
+"System update stuck → Use recovery or flash official firmware.",
+"App install blocked → Remove unknown sources or enable Play Protect."
+],
+"Lenovo":[
+"ThinkPad won't boot → Run diagnostics and reseat RAM/SSD.",
+"Keyboard backlight not working → Check hotkey and BIOS setting.",
+"Audio driver missing → Reinstall Realtek or Conexant drivers.",
+"Lenovo Vantage errors → Reinstall Vantage and update drivers through it.",
+"Battery wear → Calibrate battery and check power settings.",
+"Fingerprint login fails → Re-register fingerprint and update drivers.",
+"Docking station issues → Update dock firmware and drivers.",
+"Trackpad gestures missing → Reinstall touchpad driver and check settings.",
+"Fan noisy constantly → Update BIOS and clean vents.",
+"BIOS update interrupted → Use recovery BIOS method from Lenovo support.",
+"Camera not detected → Check privacy shutter and reinstall camera driver.",
+"No display on external monitor → Update GPU driver and check cables.",
+"Windows HAL error after update → Roll back driver or patch Windows.",
+"Battery not detected → Reseat battery and check power connector.",
+"Random freezing → Run hardware diagnostics and check event viewer."
+],
+"Acer":[
+"Blue screen on boot → Update BIOS and drivers; run memory/disk checks.",
+"Touchscreen not responding → Reinstall driver or recalibrate.",
+"Wi-Fi drops → Update wireless driver and disable power saving.",
+"No sound → Reinstall audio drivers and check services.",
+"Keyboard not working → Test external keyboard and update drivers.",
+"Battery not charging → Test adapter and battery report.",
+"Docking issues → Update dock firmware and Windows drivers.",
+"Display flicker → Update GPU driver and check display cable.",
+"Overheating → Clean fans and check thermal paste.",
+"BIOS settings reset → CMOS battery failing — replace if needed.",
+"Wake from sleep fails → Update chipset and power management drivers.",
+"Screen dead on startup → Test with external monitor for GPU issues.",
+"USB not powering devices → Check BIOS USB power settings.",
+"SSD not recognized → Ensure AHCI enabled and check SATA connections.",
+"Audio jack not detecting headset → Clean jack and update audio driver."
+],
+"Asus":[
+"Aura lighting not responding → Reinstall Armoury Crate or Aura software.",
+"BIOS update failed → Use USB BIOS recovery or contact support.",
+"Thermal throttling → Clean fans, update BIOS, adjust fan curve.",
+"Screen flicker → Update display driver and test cable.",
+"Bloatware slowing system → Uninstall unnecessary software and services.",
+"Keyboard backlight problems → Update ATK package and hotkeys driver.",
+"Touchpad multitouch not working → Reinstall precision touchpad driver.",
+"GPU driver conflicts → Use DDU and reinstall latest drivers.",
+"Wi-Fi not connecting → Reinstall wireless drivers and check router.",
+"Battery drains fast on laptops → Check power profile and battery condition.",
+"USB-C port not charging → Test cable and port and update firmware.",
+"Audio crackling → Update audio driver and test different sample rates.",
+"Laptop screen dims randomly → Disable adaptive brightness and update display drivers.",
+"Cannot enter BIOS → Use 'Advanced startup' in Windows to boot to UEFI.",
+"Chromebook-specific issues (if present) → Powerwash or reinstall ChromeOS."
+],
+"Microsoft Surface":[
+"Touchscreen not responsive → Run Surface Diagnostic Toolkit and update drivers.",
+"Type Cover not detected → Re-seat the connector and check for debris.",
+"Sleep/hibernate issues → Update Windows and Surface firmware.",
+"Battery life poor → Adjust power settings and check firmware.",
+"Wi-Fi disconnects → Reinstall network drivers and update firmware.",
+"Pen not pairing → Re-pair Pen and update Surface drivers.",
+"Surface Dock not working → Update dock firmware and Surface drivers.",
+"Screen flicker → Update GPU drivers and apply Surface updates.",
+"USB accessories not recognized → Check power and reconnect.",
+"Slow performance after update → Roll back updates or update drivers.",
+"Camera driver errors → Reinstall camera drivers from Windows Update.",
+"Blue screen during docking → Update docking firmware and driver stack.",
+"Battery won't charge to 100% → Calibrate and run battery reports.",
+"Surface app crashes → Reinstall Surface app and run SFC /scannow.",
+"Touch gestures missing → Verify precision touchpad settings and gestures."
+],
+"MSI":[
+"Afterburner conflicts with other monitoring apps → Uninstall conflicting apps.",
+"Keyboard firmware not updating → Use official MSI updater and run as admin.",
+"Overclocking unstable → Reset BIOS to stock and test stability.",
+"Fan noisy → Clean dust and update BIOS fan profiles.",
+"RGB not syncing → Reinstall Mystic Light or SteelSeries Engine.",
+"Boot issues after BIOS tweak → Reset CMOS and test defaults.",
+"Thermal throttling → Reapply thermal paste and improve cooling.",
+"GPU not detected in BIOS → Re-seat GPU and test PCIe slot.",
+"Laptop battery charging slowly → Update battery firmware and drivers.",
+"Strange POST codes → Consult manual to decode and isolate hardware.",
+"MSI Center crashing → Reinstall the MSI Center app and update drivers.",
+"Display flicker with G-Sync → Update driver and disable conflicting settings.",
+"BIOS update hanging → Use USB BIOS flashback method if supported.",
+"USB passthrough issues → Update USB firmware and chipset drivers.",
+"Memory compatibility errors → Test with known good RAM modules."
+],
+"Razer":[
+"Chroma not syncing → Reinstall Razer Synapse and update firmware.",
+"Peripherals not detected → Test on different USB port and PC.",
+"Mouse jitter → Clean sensor and update firmware.",
+"Laptop battery drain → Turn off RGB and update power profiles.",
+"Drivers causing BSOD → Remove conflicting drivers and reinstall cleanly.",
+"Headset mic not recognized → Change default recording device and update firmware.",
+"Keyboard macros not working → Recreate macros and save to onboard memory.",
+"Razer Synapse won't start → Reinstall and clear AppData/Roaming configs.",
+"Mouse acceleration unexpected → Disable in Synapse and Windows mouse settings.",
+"Lighting effects lag → Reduce effect complexity and update Synapse.",
+"Wireless dongle disconnects → Replace dongle or test on another system.",
+"Controller not mapping correctly → Reset mapping in controller settings.",
+"Peripheral firmware update failed → Retry and keep device connected to power.",
+"Surface compatibility issues → Test on different surfaces or use mousepad.",
+"Audio latency with Bluetooth → Use wired connection for low latency."
+],
+"Intel":[
+"CPU overheating → Check cooler mounting and reapply thermal paste.",
+"High idle temps → Update BIOS and ensure fans on proper curve.",
+"I/O errors on NVMe → Update storage drivers and firmware.",
+"Performance drop after update → Update chipset & microcode and reinstall drivers.",
+"System instability under load → Run Prime95 and memtest86 to test components.",
+"Thunderbolt device not detected → Update Thunderbolt driver and firmware.",
+"Integrated GPU artifacts → Update integrated graphics driver or BIOS.",
+"AVX-related crashes → Check for microcode updates and workload compatibility.",
+"Power management causing high latency → Tweak C-states and power settings in BIOS.",
+"Boot hangs on POST → Update BIOS and check connected devices.",
+"Memory training failures → Try different RAM slots and update BIOS.",
+"Hardware watchdog triggers → Check logs and test PSU stability.",
+"CPU frequency downclocking unexpectedly → Monitor temperatures and power limits.",
+"Intel RST issues with RAID → Update RST drivers and check disk status.",
+"Legacy device not supported → Check compatibility list or use virtualization workaround."
+],
+"AMD":[
+"Driver crashes & TDR → Use DDU and clean-install latest Adrenalin drivers.",
+"CPU high temperatures → Improve cooling and check case airflow.",
+"Performance inconsistent → Update chipset drivers and BIOS microcode.",
+"Infinity Fabric/latency tuning needed → Adjust memory timings and FCLK.",
+"Compatibility on older motherboards → Update BIOS to latest vendor release.",
+"PCIe device not detected → Check BIOS/PCIe settings and reseat device.",
+"GPU artifacting → Test with different drivers and check hardware temps.",
+"Windows 11 specific issues → Ensure latest drivers and Windows updates applied.",
+"System hangs under load → Run stress tests and check PSU stability.",
+"Slow storage with AMD controller → Update RAID/NVMe driver and chipset firmware.",
+"PBO causing instability → Reset to default and test stability.",
+"Driver installation warnings → Disable secure boot temporarily if required.",
+"Frame pacing issues in games → Try latest drivers and in-game settings adjustments.",
+"High idle GPU usage → Check background apps and overlay features.",
+"Fan curve ineffective → Configure custom fan profile in vendor software."
+],
+"Nvidia":[
+"Driver installation fails → Use DDU to remove old drivers then install fresh package.",
+"Screen flicker/tearing → Enable G-Sync or set V-Sync in game settings.",
+"CUDA application fails → Ensure CUDA toolkit version matches driver.",
+"High GPU usage idle → Check for background GPU-accelerated apps or malware.",
+"Gaming crashes → Update GPU driver, check temps, and test default settings.",
+"HDMI audio not present → Set HDMI audio output in Windows Sound settings.",
+"Multiple monitor detection issues → Reinstall Nvidia control panel and drivers.",
+"Driver version conflict with game → Try recommended driver from game developer.",
+"RTX features not available → Ensure DirectX 12 and latest drivers installed.",
+"Nvidia Control Panel missing → Reinstall driver and nvcpl package.",
+"ShadowPlay/recording failing → Check storage permissions and driver support.",
+"NVENC encoder not available → Update driver and ensure supported GPU model.",
+"Black screen on boot after driver update → Boot safe mode and roll back driver.",
+"DLSS causing artifacts → Update drivers and test DLSS mode settings.",
+"GPU fans noisy → Clean dust and update fan profile via software."
+],
+"TP-Link":[
+"No internet → Power cycle modem/router and confirm ISP status.",
+"Slow Wi-Fi → Update firmware and change Wi-Fi channel or band.",
+"Cannot access admin → Reset router to factory and reconfigure.",
+"Guest network not displaying → Recreate guest network and check isolation settings.",
+"VPN passthrough not working → Enable passthrough and check firmware.",
+"Port forwarding fails → Verify correct internal IP and port mapping.",
+"Mesh nodes not connecting → Reboot nodes and ensure firmware matches.",
+"WPS not connecting → Disable WPS (insecure) and configure manually.",
+"Router keeps rebooting → Check for overheating and unstable power supply.",
+"LAN ports dead → Test cable and try different port on router.",
+"DNS issues → Use public DNS (8.8.8.8/1.1.1.1) to isolate ISP DNS problems.",
+"Parental controls blocking legit sites → Adjust filters and check schedule.",
+"QoS not prioritizing traffic → Ensure QoS rules are correct and applied.",
+"Firmware update bricked router → Use TFTP recovery if supported by model.",
+"Remote management not accessible → Ensure WAN admin disabled or correct port forwarded."
+],
+"Windows":[
+"Slow startup → Disable startup apps and enable fast startup carefully.",
+"Blue Screen (BSOD) → Note error code, update drivers, run memtest & chkdsk.",
+"Windows update stuck → Use Windows Update Troubleshooter and reset components.",
+"Activation problems → Check product key and account or contact Microsoft support.",
+"File permission issues → Take ownership of files or boot to safe mode to repair.",
+"Search not working → Rebuild search index and restart Windows Search service.",
+"Explorer.exe crashes → Clear quick access and reset File Explorer settings.",
+"Driver conflicts after update → Roll back drivers or use System Restore.",
+"Slow network file transfers → Check SMB settings and update network drivers.",
+"Notification center empty → Restart Windows Explorer and check focus assist.",
+"High disk usage → Identify processes in Task Manager and disable Superfetch if needed.",
+"Task Scheduler jobs fail → Check action paths and user permissions for tasks.",
+"Power plan resets → Create custom power plan and apply settings.",
+"Cannot connect to domain → Verify DNS & domain trust and credentials.",
+"Frequent sleep/wake issues → Update chipset & power management drivers."
+],
+"macOS":[
+"App not compatible → Check for Apple Silicon support or use Rosetta 2.",
+"Slow Finder → Relaunch Finder and clear Finder preferences.",
+"Bluetooth dropping → Reset Bluetooth module and re-pair devices.",
+"Startup hangs → Boot in Safe Mode and remove login items.",
+"Time Machine backup errors → Verify target disk and repair with Disk Utility.",
+"Gatekeeper blocking app → Allow app manually in Security & Privacy.",
+"Mail not sending → Verify SMTP settings and internet connection.",
+"Printer not found → Re-add printer and update driver if applicable.",
+"External monitor scaling off → Use display settings to match resolution and refresh.",
+"iCloud syncing duplicates → Disable and re-enable iCloud or sign out and in.",
+"Kernel panic after update → Boot to recovery and reinstall macOS if necessary.",
+"Battery draining on MacBook → Check energy saver settings and background apps.",
+"App permissions reset after update → Re-grant in System Preferences > Security.",
+"Photos import errors → Repair Photos library using repair tool.",
+"Slow system after upgrade → Reset NVRAM and SMC, check compatibility of apps."
+],
+"Chrome OS":[
+"Chromebook won't boot → Hard reset or use recovery USB image.",
+"Android apps missing → Enable Play Store and update Chrome OS.",
+"Wi-Fi problems → Restart router and powerwash if persistent.",
+"Touchpad gestures wrong → Update Chrome OS and check settings.",
+"Battery drains fast → Reduce screen brightness and remove unused apps.",
+"Linux (Crostini) container errors → Recreate container and ensure updates.",
+"External monitor not recognized → Check cable and display settings in Chrome OS.",
+"Keyboard layout incorrect → Check language settings and input methods.",
+"File access to USB fails → Check filesystem compatibility and mount options.",
+"Bluetooth pairing failing → Restart Bluetooth adapter and re-pair device.",
+"Profile sync problems → Sign out and sign in again to re-sync.",
+"System update stuck → Use recovery or powerwash as a fallback.",
+"Camera not working in apps → Check app permissions and reload the page.",
+"Dev channel regressions → Switch back to stable channel or powerwash.",
+"Touchscreen calibration off → Toggle touch settings and update firmware."
+],
+"Ubuntu":[
+"Unable to update packages → Fix broken packages (sudo dpkg --configure -a) and update sources.",
+"Nvidia driver issues → Use ubuntu-drivers autoinstall or recommended proprietary driver.",
+"No sound → Restart PulseAudio or PipeWire and check output device.",
+"Mount external drive fails → use sudo fsck on partition and manual mount.",
+"Network-manager not listing networks → restart NetworkManager and reinstall firmware.",
+"GRUB not showing → reinstall GRUB from live USB and update-grub.",
+"Login loop → Check .Xauthority ownership and disk space.",
+"Wayland graphics glitches → Try Xorg or update GPU drivers.",
+"Snap apps failing → refresh snap or remove and reinstall snap.",
+"Low disk space → remove old kernels and purge apt cache.",
+"SELinux/AppArmor denies → check logs and adjust profile.",
+"Camera not accessible → add user to video group and check permissions.",
+"Package conflict after PPA → ppa-purge offending PPA and revert packages.",
+"System time out of sync → enable systemd-timesyncd or NTP.",
+"Slow boot → analyze with systemd-analyze blame and fix slow services."
+],
+"Fedora":[
+"DNF update conflicts → dnf clean all and dnf update --refresh.",
+"RPM dependency issues → enable required repos or temporarily use --allowerasing.",
+"Wayland glitches → switch to X11 to isolate GPU driver issues.",
+"Printer failed to print → install appropriate CUPS drivers.",
+"Missing codecs → enable rpmfusion repo and install codecs.",
+"SELinux blocks services → check audit log and apply permissive or fix policy.",
+"Kernel mismatch → ensure matching kernel-devel for modules.",
+"GNOME extensions causing crashes → disable and re-enable one by one.",
+"DNF locked by another process → identify and stop the other process.",
+"Flatpak app permission issues → adjust Flatseal settings or grant permissions.",
+"RPM verify failing → re-install problematic rpm packages.",
+"Secure boot issues with third-party drivers → sign modules or disable secure boot.",
+"RPMdb corrupted → restore from backup or rebuild db safely.",
+"OpenSSL updates break apps → rebuild or update dependent packages.",
+"NetworkManager not connecting → restart and check interface config."
+],
+"Arch Linux":[
+"pacman db locked (db.lck) → remove lock if safe and ensure no pacman running.",
+"Partial upgrade breaks system → sync mirrors and run full system upgrade immediately.",
+"Kernel panic after update → boot older kernel and examine journalctl for module errors.",
+"AUR build failures → verify PKGBUILD and ensure dependencies installed.",
+"systemd service failing → inspect journalctl -u <service> for logs.",
+"Filesystem errors → run fsck on affected partition from live media.",
+"Xorg fails to start → check Xorg logs and driver modules.",
+"Grub not detecting os-prober → install and configure os-prober or update grub config.",
+"Pacman signature error → refresh keys with pacman-key --refresh-keys.",
+"Btrfs subvolume issues → snapshot rollback via snapper or btrfs restore.",
+"mkinitcpio issues → regenerate initramfs and ensure hooks properly set.",
+"NVIDIA DKMS issues → rebuild dkms module after kernel update.",
+"Bluetooth pairing errors → enable and start bluetooth service and check adapters.",
+"Hardware driver missing → compile from AUR or find suitable package.",
+"Network profiling problems → use ip link and systemctl to debug network interfaces."
+],
+"PlayStation":[
+"Console won't power on → check power cable and try different outlet.",
+"Disc drive stuck → use safe mode eject or contact Sony support.",
+"NAT issues → enable UPnP or put console in DMZ.",
+"Controller won't pair → reset controller and try USB re-pair.",
+"Install stuck → rebuild database in safe mode.",
+"HDR color wrong → adjust HDR settings and TV calibration.",
+"No audio from HDMI → check audio output settings and HDMI cable.",
+"Game freezes → update system and the specific game, rebuild database.",
+"PSN sign-in errors → check PlayStation Network status and credentials.",
+"Overheating → ensure ventilation and avoid placing console in closed spaces.",
+"Network lag → use wired Ethernet and quality-of-service tweaks.",
+"Remote Play connection issues → check port forwarding and PSN status.",
+"External drive not recognized → format to exFAT and ensure enough power.",
+"VR headset not tracking → recalibrate sensors and update firmware.",
+"Save data corrupted → restore from cloud or backup where possible."
+],
+"Xbox":[
+"No display → try different HDMI port and cable; ensure correct TV input.",
+"Disc read errors → clean disc and test another disc.",
+"Controller lag → re-pair controller and reduce wireless interference.",
+"Network NAT strict → enable UPnP or put console in DMZ.",
+"Install/update stuck → power cycle console and clear local save if necessary.",
+"Game crashing to dashboard → clear cache and reinstall game.",
+"External drive not mounting → ensure drive is NTFS/exFAT and has sufficient power.",
+"Kinect/mic not recognized → check USB connection and firmware.",
+"Xbox Live sign-in fails → verify account and check Xbox Live status.",
+"High CPU/GPU temps → ensure ventilation and check fan operation.",
+"Party chat echo → use headset mode and adjust audio settings.",
+"Achievement not unlocking → check online sync and restart the game.",
+"Controller battery quick drain → check batteries and controller firmware.",
+"HDMI handshake issues → replace cable and set consistent resolution.",
+"Storage nearly full → move games to external drive or uninstall unused content."
+],
+"Nintendo Switch":[
+"Joy-Con drift → recalibrate sticks and contact support if replacement needed.",
+"Dock display issues → try undocked mode and update console firmware.",
+"Game card not recognized → clean contacts and test another game card.",
+"Battery not charging → test charger and USB-C port for debris.",
+"Update failed → restart console and retry update over stable Wi-Fi.",
+"Touchscreen latency → remove screen protector and recalibrate touch.",
+"Bluetooth audio not supported → use wired headphones or Nintendo compatible wireless.",
+"Save data corrupted → restore from cloud (if available) or contact Nintendo support.",
+"Controllers won't sync → reset controllers and pair via console settings.",
+"Parental controls lockout → use PIN or Nintendo support for reset.",
+"Screen burn-in concerns (OLED) → avoid static images and reduce brightness.",
+"Home menu slow → close background games and update firmware.",
+"User profile missing → check account sync and re-add user if needed.",
+"Joy-Con battery draining → update Joy-Con firmware and avoid continuous vibration.",
+"Pro controller disconnects → re-pair and check firmware updates."
+],
+"Canon":[
+"Printer not printing → check paper, ink levels, and print queue.",
+"Scanner not detected → install correct driver and check USB/network connections.",
+"Poor print quality → run head cleaning and alignment.",
+"Wi-Fi setup fails → use WPS or connect via USB to configure Wi-Fi.",
+"Error codes on display → consult Canon error guide and perform reset.",
+"Paper jam persists → remove paper, check rollers and reinsert properly.",
+"Colors off in print → calibrate color settings and use correct ICC profile.",
+"Unable to scan to PC → enable network scanning and correct share permissions.",
+"Ink cartridges not recognized → reseat cartridges and clean contacts.",
+"Slow printing via network → use wired Ethernet or increase TTL in driver settings.",
+"Driver conflicting after OS update → reinstall latest driver from Canon support.",
+"Firmware update failed → retry with stable power supply and USB connection.",
+"Maintenance required error → run maintenance mode and replace parts as recommended.",
+"Mac printing issues → add printer via IP and use AirPrint where available.",
+"Print spooler crash → restart spooler service and clear stuck jobs."
+],
+"Nikon":[
+"Camera won't power on → ensure battery charged and contacts clean.",
+"Lens error → remove lens, clean contacts and reattach; update lens firmware.",
+"SD card errors → backup and reformat card in camera.",
+"Focus hunting → check AF mode and clean lens/sensor.",
+"Firmware update failed → ensure battery >50% and follow Nikon update steps.",
+"Overexposed images → check exposure compensation and metering mode.",
+"Hot pixel or sensor dust → use sensor cleaning mode and professional cleaning if needed.",
+"Image not saving → check card capacity and write protection switch.",
+"Battery drains fast in cold → keep battery warm and carry spares.",
+"Flash not firing → check flash settings and test external flash compatibility.",
+"Camera freezes → remove battery, wait, and reboot camera.",
+"Error on lens mount → inspect mount for damage and test another lens.",
+"Slow autofocus in low light → use AF assist lamp or switch to single-point AF.",
+"Remote shutter not triggering → check wireless remote battery and pairing.",
+"Battery charger not charging → test with spare charger or battery."
+],
+"Epson":[
+"Cartridge not recognized → reseat cartridge and clean contacts.",
+"Printer shows offline → set as default and restart print spooler.",
+"Nozzle check fails → perform head cleaning cycles and run nozzle check.",
+"Paper jams frequently → align paper guides and use recommended paper.",
+"Wi-Fi printing not working → ensure same network and re-add printer.",
+"Slow print speed → switch to draft mode for speed and check memory usage.",
+"Scanner not accessible over network → enable network scanning and firewall rules.",
+"Ink smearing → allow adequate drying time and use correct paper type.",
+"Maintenance required error → follow maintenance procedures and replace parts.",
+"Printer firmware update failed → retry via USB or reinstall firmware.",
+"Printer not responding to mobile app → ensure app updated and driver installed.",
+"Epson status monitor shows error → reinstall drivers and check connection.",
+"Printhead alignment needed → run alignment utility in printer software.",
+"Large file prints fail → print smaller batches or increase printer memory.",
+"USB printing works but network doesn't → verify IP & network settings."
+],
+"Logitech":[
+"Peripheral not pairing → replace batteries and re-pair receiver.",
+"Mouse lag → check surface and update firmware.",
+"Keyboard keys intermittently fail → test on another computer and reinstall drivers.",
+"G Hub corrupt → remove config and reinstall G Hub.",
+"Webcam poor quality → update drivers and adjust camera settings.",
+"Headset mic not working → set as default recording device and test on another PC.",
+"Unifying receiver not recognized → reinstall Unifying software and update firmware.",
+"Logitech Options conflicts → uninstall other mouse utilities.",
+"Battery life short on wireless devices → replace batteries and check power settings.",
+"RGB lighting not working → update firmware and reset to default profile.",
+"Latency on wireless keyboard → test with wired and replace receiver if needed.",
+"Multiple devices interfering → use different USB ports and avoid hubs.",
+"Device firmware update failed → retry update with full battery and direct connection.",
+"Macro not executing → reassign macro and ensure G hub saves profile to device.",
+"Logi Capture app issues → reinstall or use alternative capture software."
+],
+"Microsoft Office":[
+"Word/Excel crashes → start in safe mode and disable add-ins.",
+"Files won't open → repair Office install or open in Office Online.",
+"Activation prompts despite licence → sign in with correct Microsoft account.",
+"Slow Office apps → disable hardware acceleration in options.",
+"Document corruption → use Open & Repair or recover text from file.",
+"Templates not loading → repair or recreate Normal template.",
+"Track changes not saving → accept/reject changes and save copy.",
+"Mail merge errors → check data source fields and formats.",
+"Excel formulas wrong → check calculation options and cell formats.",
+"Shared workbook conflicts → use co-authoring in OneDrive or SharePoint.",
+"Outlook sending hangs → clear Outbox and recreate profile.",
+"PowerPoint missing fonts → embed fonts or convert to PDF.",
+"Office search broken → rebuild Windows Search index or Office indexing.",
+"AutoRecover not working → ensure AutoRecover enabled and check temp folder.",
+"OneDrive sync conflicts → resolve conflicts in OneDrive client and update Office."
+],
+"Zoom":[
+"Camera/mic not detected → check OS permissions and default device settings.",
+"Laggy meetings → use wired connection and close other bandwidth users.",
+"Cannot join meeting → check meeting ID and passcode, update Zoom client.",
+"Screen share black screen → update GPU drivers and run Zoom as admin.",
+"Audio echo → use headphones and enable echo cancellation.",
+"Background blur not available → enable in settings and update client.",
+"Virtual background not working → check hardware acceleration and system requirements.",
+"Waiting room confusion → manage participants from host controls.",
+"Recording fails → check storage permissions and available space.",
+"Chat messages lost → verify meeting chat permissions and reconnect.",
+"Spotty mobile audio → switch networks or use cellular instead of weak Wi-Fi.",
+"Breakout rooms not appearing → ensure host starts breakout rooms and correct client version.",
+"Zoom update fails to install → run installer as admin and close existing Zoom processes.",
+"Screen share audio missing on Windows → enable 'Share Computer Sound' when sharing screen.",
+"Meeting link opens wrong client → check OS default app associations and browser settings."
+],
+"Spotify":[
+"Offline playback failing → re-download playlists and ensure offline mode is on.",
+"App crashes → clear cache and reinstall Spotify.",
+"No sound despite playing → check system audio output and device volume.",
+"Sync issues between devices → log out everywhere and log back in.",
+"High data usage → enable data saver and lower streaming quality.",
+"Playback stuck at same song → clear app cache and restart device.",
+"Missing downloaded songs → check storage location and re-download.",
+"Spotify Connect not showing devices → ensure same Wi-Fi and update app firmware.",
+"Account logged out unexpectedly → change password and check active sessions.",
+"Playlist missing songs → restore from account activity if available.",
+"Library not syncing → check app version and network connectivity.",
+"Podcasts not updating → refresh feed and clear cache.",
+"Gapless playback issues → enable crossfade or gapless playback option if available.",
+"Audio stuttering on mobile → switch to lower quality and retry on stable network.",
+"Guest playback control not working → verify device permissions and local network access."
+],
+"Discord":[
+"PTT not working → check keybinds and microphone input selection.",
+"Can't hear others → verify output device and server volume.",
+"App slow or unresponsive → clear cache and reinstall the client.",
+"Screen share lag → lower resolution and use wired connection.",
+"Bot commands not working → check bot permissions and status.",
+"Push-to-talk triggers spontaneously → verify keybind conflicts and background apps.",
+"Update fails → run as admin and clear update cache.",
+"Noisy background → enable noise suppression and check microphone hardware.",
+"Direct messages not delivering → check privacy settings and mutual servers.",
+"Cannot join voice channel → check server region and server limits.",
+"Video quality low → check camera settings and network bandwidth.",
+"Discord overlay not appearing → run as admin and enable overlay in settings.",
+"Two-factor auth issues → use backup codes to access account.",
+"Screen share black screen → allow permissions and update GPU drivers.",
+"Mobile push notifications delayed → enable background app refresh and update app."
+],
+"Blender":[
+"Crashes during render → update GPU drivers and increase system RAM.",
+"Slow viewport → reduce viewport samples and enable Simplify.",
+"Add-on conflict → disable third-party add-ons to isolate issue.",
+"Render artifacts → check normals and geometry for errors.",
+"File won't open → append objects into a new file and recover autosave.",
+"Cycles GPU not listed → update CUDA or OpenCL drivers and enable in preferences.",
+"Animation timings off → check frame rate and curve editor settings.",
+"Cycles denoising artifacts → tweak denoiser settings or use higher samples.",
+"Boolean operations fail → clean up mesh and apply transforms.",
+"Texture not showing → check UV maps and image file paths.",
+"Grease pencil strokes missing → check collection visibility and layer settings.",
+"Cycles render noisy → use more samples and enable denoising in proper pass.",
+"Add-on install fails → ensure correct Blender version for addon",
+"Python API errors → update Blender version or fix script for new API.",
+"Frequent autosave corrupts file → increase autosave interval and keep backups."
+],
+"Unity":[
+"Editor not loading → delete Library folder to force reimport and match Unity version.",
+"Build fails on Android/iOS → check SDKs and signing keystore settings.",
+"Editor crashes on play → check console for errors and update graphics drivers.",
+"Physics behaves differently → adjust Fixed Timestep and collision settings.",
+"Asset serialization issues → set consistent serialization mode and reimport assets.",
+"NullReference exceptions → add defensive checks and inspect stack traces.",
+"Shader compilation errors → verify shader model and includes.",
+"Profiler not showing data → enable development build and check profiler settings.",
+"Package manager errors → clear cache and reimport packages.",
+"Slow editor → disable auto-refresh and unused packages.",
+"Lighting not baking → ensure proper lightmap UVs and memory.",
+"Animation transitions glitch → check Animator layers and blend trees.",
+"Android build size huge → strip unused engine modules and assets.",
+"Input not responding → verify new Input System settings or revert to legacy input.",
+"Scene not saving → ensure write permissions and enough disk space."
+],
+"Unreal Engine":[
+"Project won't open → match engine version and disable incompatible plugins.",
+"Shader compile errors → clear DerivedDataCache and recompile shaders.",
+"Packaging fails → inspect cook logs for missing assets and fix references.",
+"Editor performance poor → lower scalability settings and enable forward rendering.",
+"Crash on startup → verify engine install and update GPU drivers.",
+"Lightmap UV overlapping → generate proper lightmap UVs and re-bake.",
+"Blueprint compile failed → check variable types and circular dependencies.",
+"Plugin load errors → ensure plugin compatibility with engine version.",
+"Packaging size huge → remove unused assets and enable pak compression.",
+"Source control conflicts → resolve binary assets carefully and use locks.",
+"Cook process stuck → check disk space and rebuild derived data.",
+"Memory leaks in C++ → use memory profiler and check pointers.",
+"VR runtime errors → ensure correct SDK and driver versions.",
+"Animation retargeting issues → check skeleton hierarchies and retarget settings.",
+"Post-process effects crashing → disable effects to isolate the cause."
+]
+}; // end TROUBLESHOOT
+
+/* ---------- DOM refs ---------- */
+const deviceBtns = Array.from(document.querySelectorAll('.device-btn'));
+const solutions = document.getElementById('solutions');
+const deviceTitle = document.getElementById('device-title');
+const deviceMeta = document.getElementById('device-meta');
+const deviceSolutions = document.getElementById('device-solutions');
+const searchInput = document.getElementById('search');
+const closeModal = document.getElementById('closeModal');
+
+/* ---------- Accessibility & Events ---------- */
+deviceBtns.forEach((btn, idx) => {
+  // click
+  btn.addEventListener('click', ()=> openForDevice(btn.getAttribute('data-device')));
+  // keyboard
+  btn.addEventListener('keydown', (e)=>{
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); }
+  });
+  // small staggered entrance
+  btn.style.animation = `fadeUp 420ms cubic-bezier(.2,.9,.3,1) ${idx*25}ms both`;
+});
+
+/* ---------- Search ---------- */
+searchInput.addEventListener('input', ()=>{
+  const q = searchInput.value.trim().toLowerCase();
+  deviceBtns.forEach(btn=>{
+    const name = btn.getAttribute('data-device').toLowerCase();
+    btn.style.display = (!q || name.includes(q)) ? 'flex' : 'none';
+  });
+});
+
+/* ---------- Modal open/close ---------- */
+function openForDevice(device){
+  const displayName = device;
+  deviceTitle.textContent = displayName + " — Troubleshooting";
+  deviceMeta.textContent = "Quick practical checks and fixes for " + displayName + ".";
+  // clear
+  deviceSolutions.innerHTML = "";
+  const tips = TROUBLESHOOT[device] || TROUBLESHOOT[normalizeKey(device)];
+  if (tips && tips.length){
+    tips.forEach((t,i)=>{
+      const li = document.createElement('li');
+      li.className = 'fade-in-up';
+      li.style.animationDelay = `${i*28}ms`;
+      li.textContent = t;
+      deviceSolutions.appendChild(li);
+    });
+  } else {
+    const li = document.createElement('li');
+    li.textContent = "No tips added yet — coming soon.";
+    deviceSolutions.appendChild(li);
+  }
+  // show modal
+  solutions.classList.add('show');
+  solutions.setAttribute('aria-hidden','false');
+  // focus management
+  closeModal.focus();
+  // smooth scroll in modal (reset top)
+  solutions.scrollTop = 0;
+}
+
+closeModal.addEventListener('click', closeSolutions);
+document.addEventListener('keydown', (e)=>{
+  if (e.key === 'Escape' && solutions.classList.contains('show')) closeSolutions();
+});
+
+function closeSolutions(){
+  solutions.classList.remove('show');
+  solutions.setAttribute('aria-hidden','true');
+}
+
+/* ---------- Helpers ---------- */
+function normalizeKey(k){
+  // some keys in dataset use slightly different naming (e.g., "Apple" vs "iPad")
+  const map = {
+    'ipad':'iPad','android tablet':'Android Tablet','dell':'Dell Laptop','msi':'MSI',
+    'google pixel':'Google Pixel','dell desktop':'Dell Desktop','microsoft surface':'Microsoft Surface',
+    'microsoft office':'Microsoft Office'
+  };
+  const lk = k.toLowerCase();
+  return map[lk] || k;
+}
+
+/* Prevent accidental form submission (if any) */
+document.addEventListener('submit', e => e.preventDefault());
+
+/* Focus trap minimal (optional): keep keyboard in modal while open */
+document.addEventListener('focusin', (e)=>{
+  if (solutions.classList.contains('show') && !solutions.contains(e.target) && e.target !== closeModal){
+    e.stopPropagation();
+    closeModal.focus();
+  }
+});
+</script>
+</body>
+</html>
